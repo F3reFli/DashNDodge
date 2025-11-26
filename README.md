@@ -10,14 +10,14 @@
 - 2. DashNDodge_Windows.exe: The game executable for Windows.
 - 3. fonts/ & sprites/: Asset folders (included as backup/reference).
 
+# CHANGELOG (v0.0.2):
+> - New enemy on 20 score
+> - Healing item spawning after 10-20 seconds that heals 30 HP
+> - Fixed minor bugs
+> - Improved performance on some systems
+
 # HOW TO RUN (Linux):
 - Double-click 'DashNDodge_Linux' or run it from the terminal: ./DashNDodge_Linux
 
 # HOW TO RUN (Windows):
 - Double-click 'DashNDodge_Windows.exe'.
-
-> ! UPDATE 
-> - New enemy on 20 score
-> - Healing item spawning after 10-20 seconds that heals 30 HP
-> - Fixed minor bugs
-> - Improved performance on some systems
