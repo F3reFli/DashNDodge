@@ -5,7 +5,7 @@
 
 ## This folder contains the portable version of your game.
 
-https://imgflip.com/gif/ada9nj
+![Demo GIF](https://imgflip.com/gif/ada9nj)
 
 # CONTENTS:
 - 1. DashNDodge_Linux: The game executable for Linux.
