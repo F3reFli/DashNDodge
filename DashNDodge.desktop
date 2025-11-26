@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=DashNDodge
+Exec=./DashNDodge_Linux
+Icon=./icon.ico
+Terminal=false
+Categories=Game;
