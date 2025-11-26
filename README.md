@@ -3,10 +3,6 @@
 > [! VERSION: 0.0.2]
 ---
 
-## 🕹️ Showcase
-
-![Dash N Dodge Gameplay](https://imgflip.com/gif/ada9nj)
-
 ## This folder contains the portable version of your game.
 
 # CONTENTS:
