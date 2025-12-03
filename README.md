@@ -27,5 +27,5 @@
 > new music added!
 
 # PREVIEWS:
-![Gameplay](gameplay.gif)
-![Menu](menu.gif)
+![Game Preview 1](./.gitignore/menu.gif)
+![Game Preview 2](./.gitignore/gameplay.gif)
