@@ -6,7 +6,7 @@ import random
 
 import pygame
 
-from . import assets, backgrounds, charms, gfx, incidents, spellbg, stages
+from . import assets, backgrounds, charms, gamefx, gfx, incidents, spellbg, stages
 from .boss import Boss
 from .bullets import Bullets
 from .characters import BY_ID
@@ -445,6 +445,7 @@ class GameScene(Scene):
             self.sfx("parry")
             self.waves.add(p.x, p.y, 46, 0.3, (255, 210, 90), 3)
             self.flash.trigger((255, 230, 160), 50, 500)
+            self.app.fx.punch(0.3, p.x, p.y)
             self.texts.add("PARRY!", p.x, p.y - 24, GOLD, 12, 0.8)
             self.stats["parries"] += 1
         self.particles.burst(p.x, p.y, 4 + n * 2, (255, 210, 90), (80, 200), kind="spark", size=(1, 3))
@@ -464,6 +465,7 @@ class GameScene(Scene):
         self.bump_chain()
         self.sfx("shot2")
         if e.is_boss:
+            self.app.fx.punch(0.25, e.x, e.y)
             p.dash_t = 0
             a = angle_to(e.x, e.y, p.x, p.y)
             p.x = clamp(p.x + math.cos(a) * 18, FIELD_LEFT, FIELD_RIGHT)
@@ -558,6 +560,7 @@ class GameScene(Scene):
         self.cutins.append(CutIn(self.cdef.sprite, self.cdef.color, self.cdef.spell_name, from_right=False))
         self.sfx("spell")
         self.shake.add(3)
+        self.app.fx.punch(0.55, p.x, p.y)
         if deathbomb:
             self.texts.add("DEATHBOMB!", p.x, p.y - 26, ACCENT, 12, 1.0)
         return True
@@ -571,6 +574,7 @@ class GameScene(Scene):
         self.app.post.glitch(10, 0.7)
         self.app.post.aberration(16, 3)
         self.shake.add(9)
+        self.app.fx.punch(0.9, p.x, p.y)
         self.hitstop = max(self.hitstop, 8)
         self.particles.burst(p.x, p.y, 30, self.cdef.color, (60, 240), kind="spark", size=(1, 3))
         self.particles.burst(p.x, p.y, 8, (255, 255, 255), (20, 80), kind="glow", size=(4, 8))
@@ -590,6 +594,7 @@ class GameScene(Scene):
         self.app.post.glitch(45, 1.2)
         self.app.post.aberration(70, 4)
         self.shake.add(14)
+        self.app.fx.punch(1.0, p.x, p.y)
         self.flash.trigger((255, 255, 255), 230, 260)
         for i in range(3):
             self.waves.add(p.x, p.y, 120 + i * 60, 0.6 + i * 0.2, self.cdef.color, 4)
@@ -641,6 +646,7 @@ class GameScene(Scene):
         self.cutins.append(CutIn(boss.d.sprite, boss.d.color, boss.card.name, True))
         self.sfx("spell")
         self.flash.trigger(scale_color(boss.d.color, 0.8), 70, 400)
+        self.app.fx.punch(0.45, boss.x, boss.y)
         self.slow = 1.0
         self.darkness = 0
         self.red_mist = 0
@@ -682,6 +688,7 @@ class GameScene(Scene):
             self.overlays.append(Banner("Bonus Failed...", "", TEXT_DIM, 1.4, y=96, size=12))
         self.save.record_card(boss.card.name, captured)
         self.sfx("card_break")
+        self.app.fx.punch(0.6, boss.x, boss.y)
         self.waves.add(boss.x, boss.y, 160, 0.6, boss.d.color, 4)
         self.shake.add(5)
 
@@ -708,6 +715,7 @@ class GameScene(Scene):
             return
         self.bullets.cancel_all(True)
         self.sfx("boss_die")
+        self.app.fx.punch(1.0, boss.x, boss.y)
         self.app.post.glitch(18, 0.9)
         self.app.post.aberration(36, 4)
         self.flash.trigger((255, 255, 255), 230, 200)
@@ -912,6 +920,7 @@ class GameScene(Scene):
         add.fill((0, 0, 0))
         t = self.frame / 60.0
         self.bg.draw(surf, t)
+        gamefx.feed(self, self.app.fx, t)
         self._draw_ambience(surf, add, t)
         for tg in self.telegraphs:
             self._draw_telegraph(add, tg)
@@ -965,7 +974,7 @@ class GameScene(Scene):
         self.texts.draw(surf)
         for c in self.cutins:
             c.draw(surf)
-        self.hud.draw(surf)
+        self.hud.draw(self.app.hud_layer(self, surf))
         if self.dialogue is not None:
             self.dialogue.draw(surf)
         for o in self.overlays:

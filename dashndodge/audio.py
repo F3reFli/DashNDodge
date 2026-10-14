@@ -39,6 +39,7 @@ class Audio:
         self.last = {}
         self.music_name = None
         self.music_path = None
+        self.paused = False
         if not self.ok:
             return
         pygame.mixer.set_num_channels(32)
@@ -61,7 +62,8 @@ class Audio:
         sfx = self.save.settings["sfx_volume"]
         for name, snd in self.sounds.items():
             snd.set_volume(sfx * LEVELS.get(name, 0.8))
-        pygame.mixer.music.set_volume(self.save.settings["music_volume"] * 0.8)
+        music = 0.0 if self.paused else self.save.settings["music_volume"] * 0.8
+        pygame.mixer.music.set_volume(music)
 
     def play(self, name, volume=1.0):
         if not self.ok:
@@ -114,6 +116,9 @@ class Audio:
         if path == self.music_path and pygame.mixer.music.get_busy():
             return None
         try:
+            # Halt first: loading over a track that is still fading out makes
+            # SDL_mixer block until the fade ends (a freeze of up to 1.8 s).
+            pygame.mixer.music.stop()
             pygame.mixer.music.load(path)
             pygame.mixer.music.play(-1, fade_ms=fade_ms)
         except pygame.error:
@@ -129,9 +134,10 @@ class Audio:
             self.music_path = None
 
     def pause_music(self, paused):
-        if not self.ok:
+        # Muted rather than paused: pygame-ce's music.pause()/unpause() keep the
+        # GIL while waiting for the audio lock, and deadlock against the audio
+        # thread whenever a sound effect finishes at the same moment.
+        if not self.ok or paused == self.paused:
             return
-        if paused:
-            pygame.mixer.music.pause()
-        else:
-            pygame.mixer.music.unpause()
+        self.paused = paused
+        self.apply_volumes()

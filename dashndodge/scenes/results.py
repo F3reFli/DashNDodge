@@ -369,7 +369,7 @@ CREDITS = [
     ("role", "Character sprites"),
     ("name", "Majstek - Touhou Mini 16x16 Pack"),
     ("role", "Music"),
-    ("name", "\"Dance Dance Little Flowers !\" + original chiptune themes"),
+    ("name", "\"Dance Dance Little Flowers !\""),
     ("role", "Sound"),
     ("name", "Original game SFX + synthesized effects"),
     ("role", "Font"),

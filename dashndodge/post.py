@@ -11,6 +11,7 @@ from .config import H, W
 class Post:
     def __init__(self, settings):
         self.settings = settings
+        self.gpu = False  # the GPU renderer does aberration, grain and scanlines in shaders
         self.rng = random.Random(7)
         self.scan = pygame.Surface((W, H), pygame.SRCALPHA)
         for y in range(0, H, 2):
@@ -28,8 +29,8 @@ class Post:
         self.aberr_t = 0
         self.aberr_px = 0
         self.frame = 0
-        self._r = pygame.Surface((W, H)).convert()
-        self._gb = pygame.Surface((W, H)).convert()
+        self._r = pygame.Surface((W, H))
+        self._gb = pygame.Surface((W, H))
 
     @property
     def enabled(self):
@@ -58,12 +59,13 @@ class Post:
 
     def apply(self, surf):
         if self.enabled:
-            if self.aberr_t > 0:
+            if self.aberr_t > 0 and not self.gpu:
                 self._aberration(surf, max(1, int(self.aberr_px * min(1.0, self.aberr_t / 8))))
             if self.glitch_t > 0:
                 self._glitch(surf, self.glitch_power)
-            surf.blit(self.grain[(self.frame // 2) % 4], (0, 0))
-        if self.settings.get("scanlines", True):
+            if not self.gpu:
+                surf.blit(self.grain[(self.frame // 2) % 4], (0, 0))
+        if self.settings.get("scanlines", True) and not self.gpu:
             surf.blit(self.scan, (0, 0))
 
     def _aberration(self, surf, d):

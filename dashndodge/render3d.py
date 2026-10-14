@@ -138,9 +138,10 @@ def _cache_put(key, img):
 
 
 class Prop:
-    __slots__ = ("frames", "world_h", "x", "v", "lift", "hang", "fps", "phase", "bob", "cache_id")
+    __slots__ = ("frames", "world_h", "x", "v", "lift", "hang", "fps", "phase", "bob", "cache_id", "glow", "glow_y")
 
-    def __init__(self, frames, world_h, x, v, lift=0.0, hang=False, fps=0.0, phase=0.0, bob=0.0):
+    def __init__(self, frames, world_h, x, v, lift=0.0, hang=False, fps=0.0, phase=0.0, bob=0.0, glow=None,
+                 glow_y=0.5):
         self.frames = frames if isinstance(frames, list) else [frames]
         self.world_h = world_h
         self.x = x
@@ -151,6 +152,8 @@ class Prop:
         self.phase = phase
         self.bob = bob
         self.cache_id = id(self.frames[0])
+        self.glow = glow  # light colour emitted by this prop (lanterns, crystals)
+        self.glow_y = glow_y  # where the light sits, as a fraction of the height from the top
 
 
 class PropField:
@@ -165,6 +168,7 @@ class PropField:
         self.z_near = z_near
         self.props = []
         self.uid = id(self)
+        self.lit = []  # (x, y, radius, colour, intensity) of glowing props drawn this frame
 
     def add(self, frames, world_h, x, v, **kw):
         p = Prop(frames, world_h, x, v, **kw)
@@ -208,6 +212,7 @@ class PropField:
             if self.z_near < z < self.z_far:
                 vis.append((z, p))
         vis.sort(key=lambda a: -a[0])
+        self.lit = []
         for z, p in vis:
             scale = f / z
             hpx = p.world_h * scale
@@ -225,7 +230,10 @@ class PropField:
             lift = p.lift + (math.sin(t * 2 + p.phase) * p.bob if p.bob else 0.0)
             if p.hang:
                 top = hz - (cam.ceiling - cam.height - lift) * scale
-                surf.blit(img, (int(sx - w / 2), int(top)))
             else:
-                base = hz + (cam.height - lift) * scale
-                surf.blit(img, (int(sx - w / 2), int(base - img.get_height())))
+                top = hz + (cam.height - lift) * scale - img.get_height()
+            surf.blit(img, (int(sx - w / 2), int(top)))
+            if p.glow is not None:
+                near = 1.0 - clamp((z - self.fog_start) / (self.z_far - self.fog_start), 0.0, 1.0)
+                if near > 0.05:
+                    self.lit.append((sx, top + img.get_height() * p.glow_y, 10 + hpx * 1.1, p.glow, near))

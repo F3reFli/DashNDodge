@@ -27,6 +27,9 @@ def main():
         "--add-data", f"{os.path.join(ROOT, 'fonts')}{sep}fonts",
         "--add-data", f"{os.path.join(ROOT, 'sprites')}{sep}sprites",
         "--add-data", f"{os.path.join(ROOT, 'vfx')}{sep}vfx",
+        # moderngl loads its GL context backend (x11 / egl / wgl) dynamically.
+        "--collect-submodules", "glcontext",
+        "--hidden-import", "moderngl",
         "--distpath", os.path.join(ROOT, "dist"),
         "--workpath", os.path.join(ROOT, "build"),
         "--specpath", os.path.join(ROOT, "build"),

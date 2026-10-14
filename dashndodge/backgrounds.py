@@ -118,11 +118,27 @@ def grade(surf, color):
 
 
 class Background:
+    haze = 0.0  # heat-haze shader distortion (GPU renderer)
+
     def __init__(self, seed=1):
         self.rng = random.Random(seed)
 
     def draw(self, surf, t):
         surf.fill((8, 6, 14))
+
+    def light_source(self, t):
+        """(x, y, strength, colour) of the sky light that casts god rays, or None."""
+        return None
+
+    def lights(self, fx, t):
+        """Feed the GPU renderer: god rays, haze and the lights of glowing props."""
+        src = self.light_source(t)
+        if src is not None:
+            fx.godray = src
+            x, y, k, col = src
+            fx.lights.add(x, y, 150, col, 0.35 * k)
+        if self.haze:
+            fx.haze = max(fx.haze, self.haze)
 
 
 class Scene3D(Background):
@@ -162,6 +178,13 @@ class Scene3D(Background):
     def fx(self, surf, t):
         pass
 
+    def lights(self, fx, t):
+        super().lights(fx, t)
+        for field in (self.props,):
+            for x, y, r, col, k in field.lit:
+                flicker = 0.85 + 0.15 * math.sin(t * 13 + x * 0.1)
+                fx.lights.add(x, y, r * 1.7, col, min(1.0, k * flicker * 1.2))
+
     def draw(self, surf, t):
         self.move(t)
         self.sky(surf, t)
@@ -192,8 +215,8 @@ class Twilight(Scene3D):
             P.add(tx.pine() if rng.random() < 0.7 else tx.dead_tree(), rng.uniform(2.6, 3.6), -rng.uniform(2.0, 4.5), v)
             P.add(tx.pine() if rng.random() < 0.7 else tx.dead_tree(), rng.uniform(2.6, 3.6), rng.uniform(2.0, 4.5), v + 0.6)
         for i in range(8):
-            P.add(tx.stone_lantern(), 0.9, -1.15, i * 3 + 1)
-            P.add(tx.stone_lantern(), 0.9, 1.15, i * 3 + 1)
+            P.add(tx.stone_lantern(), 0.9, -1.15, i * 3 + 1, glow=(255, 160, 70), glow_y=0.36)
+            P.add(tx.stone_lantern(), 0.9, 1.15, i * 3 + 1, glow=(255, 160, 70), glow_y=0.36)
         for i in range(4):
             P.add(tx.jizo(), 0.38, rng.choice((-1.5, 1.5)), i * 6 + 2.3)
         P.add(tx.torii(), 2.7, 0.0, 6.0)
@@ -215,6 +238,9 @@ class Twilight(Scene3D):
         for dx in (ox - W * 2, ox):
             surf.blit(self.clouds, (dx, hz - 70))
         self.glyph.draw(surf, t, W / 2, 56)
+
+    def light_source(self, t):
+        return (W / 2 + self.cam.x * -20, self.cam.hz - 26, 0.75, (255, 90, 80))
 
     def fx(self, surf, t):
         drifting_dots(surf, t, 11, 26, (200, 255, 120), (0, 140, W, H - 140), (-6, 6))
@@ -264,6 +290,9 @@ class Lake(Scene3D):
         surf.blit(self.mansion, (140 - self.cam.x * 30, hz - 86))
         self.glyph.draw(surf, t, 470, 60)
 
+    def light_source(self, t):
+        return (470, self.cam.hz - 76, 0.7, (170, 205, 255))
+
     def fx(self, surf, t):
         hz = self.cam.hz
         for y, sp in ((hz - 30, 9), (hz + 10, -14), (hz + 60, 20), (hz + 150, -26)):
@@ -312,6 +341,9 @@ class Gate(Scene3D):
         pygame.draw.circle(surf, (230, 60, 60), (120, int(hz) - 70), 22)
         surf.blit(self.mansion, (W / 2 - self.mansion.get_width() / 2 - self.cam.x * 25, hz - self.mansion.get_height() + 4))
         self.glyph.draw(surf, t, 520, 60)
+
+    def light_source(self, t):
+        return (120, self.cam.hz - 70, 0.8, (255, 90, 70))
 
     def fx(self, surf, t):
         drifting_dots(surf, t, 31, 40, (220, 40, 60), (0, 0, W, H), (16, 34), twinkle=False, size=2)
@@ -408,6 +440,9 @@ class ClockTower(Scene3D):
             pygame.draw.line(surf, (110, 100, 170), (cx, cy), (cx + math.sin(angle) * length, cy - math.cos(angle) * length), width)
         self.glyph.draw(surf, t, 90, 70)
 
+    def light_source(self, t):
+        return (W / 2 - self.cam.x * 20, self.cam.hz - 20, 0.45, (160, 160, 255))
+
     def fx(self, surf, t):
         drifting_dots(surf, t, 51, 30, (200, 200, 255), (0, 0, W, H), (6, 14))
         self.kanji.draw(surf, t)
@@ -461,6 +496,9 @@ class ScarletMoon(Scene3D):
             pygame.draw.polygon(surf, col, [(bx, by), (bx - 7, by - flap), (bx - 3, by + 1)])
             pygame.draw.polygon(surf, col, [(bx, by), (bx + 7, by - flap), (bx + 3, by + 1)])
 
+    def light_source(self, t):
+        return (W / 2 - self.cam.x * 15, self.cam.hz - 50, 1.0, (255, 70, 80))
+
     def fx(self, surf, t):
         self.talismans.draw(surf, t)
         self.kanji.draw(surf, t)
@@ -473,6 +511,7 @@ class ScarletMoon(Scene3D):
 
 
 class Basement(Scene3D):
+    haze = 0.55
     horizon = 160
     ceiling = 2.4
     fog = (26, 4, 16)
@@ -495,7 +534,8 @@ class Basement(Scene3D):
         for _ in range(7):
             P.add(tx.cage(), 0.7, rng.uniform(-1.6, 1.6), rng.uniform(0, 24), hang=True, lift=0.6, bob=0.05, phase=rng.uniform(0, 6))
         for _ in range(18):
-            P.add(tx.crystal_cluster(), rng.uniform(0.5, 1.0), rng.choice((-1, 1)) * rng.uniform(0.9, 2.8), rng.uniform(0, 24))
+            P.add(tx.crystal_cluster(), rng.uniform(0.5, 1.0), rng.choice((-1, 1)) * rng.uniform(0.9, 2.8), rng.uniform(0, 24),
+                  glow=hsv(rng.random(), 0.6, 1.0), glow_y=0.55)
         self.kanji = KanjiColumns(["禁忌", "四百九十五年", "壊れた玩具", "ありとあらゆるものを破壊する"], (255, 90, 90), 7, alpha=60)
         self.glyph = GiantGlyph("禁壊", (120, 0, 20), 7, 50)
 
@@ -534,6 +574,7 @@ class Torii(Scene3D):
     sky_colors = ((2, 0, 4), (60, 8, 20))
     gate_shade = (1.0, 0.85)
     kanji_color = (200, 30, 50)
+    lantern_light = (255, 150, 70)
     phrases = ["千本鳥居", "終わらない夜", "幻想郷", "避ける"]
     glyphs = "鳥居夢"
 
@@ -550,8 +591,8 @@ class Torii(Scene3D):
         for i in range(20):
             P.add(tx.torii(self.gate_shade[i % 2]), 2.4, 0.0, i * 1.2)
         for i in range(12):
-            P.add(tx.stone_lantern(), 0.8, -1.5, i * 2 + 0.6)
-            P.add(tx.stone_lantern(), 0.8, 1.5, i * 2 + 0.6)
+            P.add(tx.stone_lantern(), 0.8, -1.5, i * 2 + 0.6, glow=self.lantern_light, glow_y=0.36)
+            P.add(tx.stone_lantern(), 0.8, 1.5, i * 2 + 0.6, glow=self.lantern_light, glow_y=0.36)
         for _ in range(16):
             P.add(tx.pine((6, 2, 6), (50, 10, 20)), rng.uniform(3, 4), rng.choice((-1, 1)) * rng.uniform(2.6, 5), rng.uniform(0, 24))
         self.kanji = KanjiColumns(self.phrases, self.kanji_color, 8, n=6, alpha=60)
@@ -563,6 +604,9 @@ class Torii(Scene3D):
         hz = self.cam.hz
         surf.blit(self.sun, (W / 2 - self.sun.get_width() / 2, hz - self.sun.get_height() / 2 - 30))
         self.glyph.draw(surf, t, W / 2, 50)
+
+    def light_source(self, t):
+        return (W / 2, self.cam.hz - 30, 0.85, self.moon_color)
 
     def fx(self, surf, t):
         self.talismans.draw(surf, t)
@@ -579,6 +623,7 @@ class Night(Torii):
     sky_colors = ((2, 0, 10), (40, 18, 80))
     gate_shade = (0.75, 0.6)
     kanji_color = (150, 110, 255)
+    lantern_light = (170, 120, 255)
     phrases = ["終わらない夜", "千本鳥居", "幻想郷の夜", "まだ避けるか"]
     glyphs = "夜終"
     tint = (200, 190, 255)

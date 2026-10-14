@@ -6,8 +6,9 @@ from .. import assets, backgrounds, gfx
 from ..characters import CHARACTERS
 from ..config import GOLD, H, TEXT, TEXT_DIM, W
 from ..game import DIFF_COLORS, DIFFICULTY, GameScene
+from ..fx import Particles, Shockwaves
 from ..scene import Scene, dim
-from ..util import clamp, ease_out_back, scale_color
+from ..util import clamp, ease_out_back, ease_out_cubic, scale_color
 
 MODE_NAMES = {"story": "Story Mode", "extra": "Extra Stage", "endless": "Endless"}
 DIFF_BLURB = [
@@ -36,6 +37,8 @@ class CharSelectScene(Scene):
             self.diff = max(self.diff, 1)
         self.row = 0  # 0 = character, 1 = difficulty
         self.change_t = 0.0
+        self.waves = Shockwaves()
+        self.sparks = Particles(200)
 
     def unlocked(self, c):
         return not c.locked_by or self.app.save.unlocks.get(c.id, False)
@@ -43,6 +46,8 @@ class CharSelectScene(Scene):
     def update(self, dt):
         self.t += dt
         self.change_t += dt
+        self.waves.update(dt)
+        self.sparks.update(dt)
         inp = self.app.input
         if inp.was_pressed("back"):
             from .title import TitleScene
@@ -57,6 +62,9 @@ class CharSelectScene(Scene):
             if self.row == 0:
                 self.index = (self.index + d) % len(CHARACTERS)
                 self.change_t = 0.0
+                col = CHARACTERS[self.index].color if self.unlocked(CHARACTERS[self.index]) else (90, 80, 120)
+                self.waves.add(130, 150, 120, 0.5, col, 3)
+                self.sparks.burst(130, 150, 24, col, (50, 180), kind="spark", size=(1, 3))
             else:
                 lo = 1 if self.mode == "extra" else 0
                 self.diff = int(clamp(self.diff + d, lo, 3))
@@ -67,6 +75,7 @@ class CharSelectScene(Scene):
                 self.sfx("parry_fail")
                 return
             self.sfx("select")
+            self.app.fx.punch(0.5, 130, 150)
             save = self.app.save
             save.settings["last_character"] = c.id
             save.settings["last_difficulty"] = self.diff
@@ -85,7 +94,14 @@ class CharSelectScene(Scene):
         col = c.color if unlocked else (80, 70, 100)
         gfx.draw_magic_circle(add, 130, 150, 100, scale_color(col, 0.5), t * 0.3, 1.0, 6)
         gfx.blit_glow(add, 130, 150, 80, scale_color(col, 0.3))
+        self.waves.draw(add)
+        self.sparks.draw(surf, add)
         surf.blit(add, (0, 0), special_flags=pygame.BLEND_ADD)
+        fx = self.app.fx
+        fx.set_grade("night")
+        fx.waves_from(self.waves)
+        fx.lights.add(130, 150, 190, col, 0.8)
+        fx.godray = (130, 150, 0.6, col)
         assets.blit_text(surf, "キャラ選択 - Choose your dodger", (W / 2, 8), 12, TEXT_DIM, "midtop")
         assets.blit_text(surf, MODE_NAMES[self.mode], (W / 2, 22), 12, GOLD, "midtop")
         # Big portrait
@@ -165,5 +181,9 @@ class CharSelectScene(Scene):
                 surf.blit(gfx.heart_icon(), (x + 54 + i * 10, y + 2))
             return
         w = 110
+        grow = ease_out_cubic(self.change_t / 0.45)
+        fill = int(w * clamp(value, 0, 1) * grow)
         pygame.draw.rect(surf, (40, 30, 60), (x + 54, y + 5, w, 4))
-        pygame.draw.rect(surf, GOLD, (x + 54, y + 5, int(w * clamp(value, 0, 1)), 4))
+        pygame.draw.rect(surf, GOLD, (x + 54, y + 5, fill, 4))
+        if fill > 2:
+            surf.fill((255, 255, 230), (x + 54 + fill - 2, y + 4, 2, 6))

@@ -13,7 +13,6 @@ A full remake of the 0.0.4 prototype:
 - **A unique spell card background for every boss**: rotating mandalas, kanji rings, clockwork, vortexes.
 - **Boss intro cards**, midbosses, and lasers you have to dash through.
 - **Omamori charms**: after each stage, pick one of three lucky charms that change your run (12 to collect).
-- **An original chiptune soundtrack** for the title screen and the bosses.
 - **Animated sprites**: the 16×16 Majstek sprites now bob, lean into movement, squash and stretch on dashes, flash white when hit, leave afterimages and cast shadows. Bosses get rotating magic circles and an HP ring.
 - **Real danmaku**: 14 bullet types (orbs, rice, knives, amulets, ice, stars, butterflies, spears…) with glow, spawn flashes and up to hundreds of bullets on screen at 60 FPS.
 - **A story mode**: 6 stages modelled on *Embodiment of Scarlet Devil* (Rumia → Cirno → Meiling → Patchouli → Sakuya → Remilia) plus an Extra stage (Flandre), with 4 midbosses (Daiyousei, Koakuma, Sakuya, Patchouli). That's **25 spell cards**, pre-boss banter and endings for each character.
@@ -42,7 +41,9 @@ python -m venv .venv
 .venv/bin/python main.py
 ```
 
-**Standalone executable**: `pip install pyinstaller`, then `python build.py`. The result lands in `dist/`.
+**Standalone executable**: `pip install -r requirements-dev.txt`, then `python build.py`. The result lands in `dist/`.
+
+**Tests**: `.venv/bin/python -m pytest tests` (GPU tests are skipped when no OpenGL context is available).
 PyInstaller can only build for the OS it runs on, so build the Windows `.exe` from Windows.
 
 Settings, high scores and unlocks are saved in `~/.local/share/dashndodge/save.json`
@@ -90,7 +91,21 @@ Settings, high scores and unlocks are saved in `~/.local/share/dashndodge/save.j
 - **Endless**: waves forever, random incidents and random boss cards, getting faster over time.
 - **Spell Practice**: replay any spell card you've already seen (midbosses included), and track your captures.
 
-Settings let you tune music/SFX volume, fullscreen, screen shake, background brightness (lower it if bullets get hard to read), visual effects (glitch, grain, aberration) and scanlines.
+Settings let you tune music/SFX volume, fullscreen, screen shake, background brightness (lower it if bullets get hard to read), the renderer, bloom, dynamic lighting, a CRT screen curve, visual effects (glitch, grain, aberration) and scanlines.
+
+## Graphics
+
+The game is drawn on a 640×360 canvas, then finished on the GPU with OpenGL shaders (`moderngl`):
+
+- **Bloom** on bullets, lasers and magic, plus a soft shoulder so bright spots glow instead of clipping.
+- **Dynamic 2D lighting**: bullets, characters, bosses, spells, stone lanterns and crystals light up the stage around them.
+- **God rays** pouring out of each stage's sun or moon (and out of the boss during spell cards), occluded by torii, mansions and spires.
+- **Shockwave refraction**, a zoom-blur **impact punch** on hits, parries, bombs and boss kills, heat haze in the basement, and a red pulse when you are down to your last heart.
+- **Colour grading** per stage, pushed harder during spell cards; vignette, film grain, pixel-aligned scanlines and an optional CRT curve.
+- **Sharp-bilinear upscaling**: crisp pixels at any window size, letterboxed, with sub-pixel screen shake.
+- Scene changes **burn away** in a diagonal dissolve; menus have a sliding, glowing selection bar, and the title screen opens with an animated logo.
+
+If OpenGL is not available, the game falls back to the classic renderer automatically (Settings → Renderer switches between the two).
 
 ## Custom music
 
@@ -103,9 +118,7 @@ Drop `.mp3` / `.ogg` / `.wav` files into `vfx/musics/`. The game picks them by f
 | `boss_rumia`, `boss_cirno`, …, `boss_flandre`, or just `boss` | boss fights |
 | `ending` | ending / credits |
 
-Anything without one of these prefixes is the default track (currently *Dance Dance Little Flowers !*, used for the stages).
-
-The title and boss themes (`title - …`, `boss - …`, `boss_remilia - …`, `boss_flandre - …`) are original chiptunes rendered by `tools/compose.py`: edit the chords and melodies there and run `python tools/compose.py` to regenerate them, or simply replace the files.
+Anything without one of these prefixes is the default track. Right now *Dance Dance Little Flowers !* is the only track, so it plays everywhere.
 
 ## Project layout
 
@@ -127,13 +140,16 @@ dashndodge/
   render3d.py        mode-7 style planes + projected props
   textures.py        procedural floor textures and props
   spellbg.py         per-boss spell card backgrounds
-  post.py            scanlines, grain, glitch, chromatic aberration
+  post.py            CPU effects: glitch tears (+ grain/scanlines/aberration on the classic renderer)
+  renderer.py        GPU pipeline (moderngl): bloom, god rays, lighting, grading, upscaling
+  shaders.py         the GLSL shaders
+  screenfx.py        per-frame screen effect state + light map, fed by the scenes
+  gamefx.py          turns gameplay state into lights, grade and ripples
   charms.py          omamori charms
   gfx.py / fx.py     sprite animation, magic circles, particles
   ui.py              HUD, dialogue, cut-ins
   synth.py / audio.py  synthesized SFX and music
   scenes/            title, character select, pause, results, ...
-tools/compose.py     chiptune tracker for the soundtrack
 ```
 
 Patterns and stages are plain Python generators (`yield n` waits *n* frames), so adding a spell card is just a function in `bossdefs.py`.
@@ -142,7 +158,7 @@ Patterns and stages are plain Python generators (`yield n` waits *n* frames), so
 
 - Original game & remake: **1llumni**
 - Character sprites: **Majstek**, *Touhou Mini 16x16 Pack* (non-commercial use, credit required)
-- Music: *Dance Dance Little Flowers !* (stages) and original chiptune themes (title, bosses)
+- Music: *Dance Dance Little Flowers !*
 - Font: PixelMplus
 - Touhou Project © ZUN / Team Shanghai Alice. This is a non-commercial fan game made under the
   [Touhou Project fan creation guidelines](https://touhou-project.news/guidelines_en/). It contains no assets taken from the official games.

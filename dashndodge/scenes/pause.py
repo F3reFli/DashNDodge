@@ -1,7 +1,7 @@
 
-from .. import assets, charms, gfx
+from .. import assets, charms
 from ..config import GOLD, H, TEXT_DIM, W
-from ..scene import Menu, MenuItem, Scene, dim
+from ..scene import Menu, MenuItem, Scene, overlay_open
 
 
 class PauseScene(Scene):
@@ -17,7 +17,7 @@ class PauseScene(Scene):
             MenuItem("How to Play", self.howto, sub="遊び方"),
             MenuItem("Settings", self.settings, sub="設定"),
             MenuItem("Quit to Title", self.to_title, sub="タイトルへ"),
-        ], W // 2 - 70, 140, spacing=20)
+        ], W // 2 - 70, 140, spacing=20, intro=0.08)
 
     def enter(self):
         self.app.audio.pause_music(True)
@@ -61,10 +61,8 @@ class PauseScene(Scene):
         self.menu.update(dt)
 
     def draw(self, surf):
-        surf.blit(gfx.blur(surf, 3), (0, 0))
-        dim(surf, 150)
-        assets.blit_text(surf, "一時停止", (W / 2, 70), 24, (255, 255, 255), "midtop")
-        assets.blit_text(surf, "Game Paused", (W / 2, 100), 12, GOLD, "midtop")
+        overlay_open(surf, self.t, "一時停止", "PAUSED", GOLD, y=62, dim_alpha=150)
+        self.app.fx.desaturate = 0.35 * min(1.0, self.t / 0.3)
         self.menu.draw(surf)
         g = self.game
         info = f"{g.cdef.name} · {g.stage.label} · Score {g.score:,}".replace(",", " ")
