@@ -598,6 +598,8 @@ class GameScene(Scene):
 
     def resolve_killer(self):
         src = self.last_hit_source
+        if getattr(src, "owner", None) is not None:  # a boss's laser
+            src = src.owner
         if self.killer_hint and self.frame - self.killer_hint[1] < 240:
             return self.killer_hint[0]
         if src is not None and hasattr(src, "is_boss"):
@@ -858,7 +860,7 @@ class GameScene(Scene):
         for b in grazed:
             self.on_graze(b)
         if hit is not None:
-            if hit.data == "sakuya":
+            if getattr(hit, "data", None) == "sakuya":  # lasers have no data
                 hit.dead = True
                 p.asleep = False
                 p.idle = 0
